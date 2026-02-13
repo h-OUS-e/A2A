@@ -1,0 +1,21 @@
+# A2A
+
+Agent-to-Agent communication system.
+
+## Installation
+
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+**Terminal 1** - Start the servers:
+```bash
+python run_servers.py
+```
+
+**Terminal 2** - Trigger an agent:
+```bash
+python -m cli.trigger "Can you schedule a time with Person B and C on Feb 15?"
+```

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:google.github.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:a2a-protocol.org)",
+      "WebFetch(domain:a2aprotocol.ai)",
+      "Bash(dir:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:towardsdatascience.com)",
+      "Bash(pip show:*)",
+      "Bash(findstr:*)",
+      "Bash(conda run:*)",
+      "WebFetch(domain:reference.langchain.com)",
+      "Bash(python:*)"
+    ]
+  }
+}

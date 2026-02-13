@@ -1,0 +1,11 @@
+event_id,date,start_time,end_time,title,location,attendees,category,recurring,notes
+evt_c1d2e3f4,2026-02-13,09:30,10:30,Morning Workout,Gym,,personal,none,
+evt_g5h6i7j8,2026-02-13,11:00,12:00,Design Review,Conference Room F,design_team,work,none,
+evt_k9l0m1n2,2026-02-13,15:00,16:30,Workshop Facilitation,Training Room,workshop_group,work,none,
+evt_o3p4q5r6,2026-02-14,09:00,10:00,Team Standup,Conference Room A,team_leads,work,none,
+evt_s7t8u9v0,2026-02-14,11:30,13:00,Lunch and Learn,Company Cafeteria,all_staff,work,none,Tech talk series
+evt_w1x2y3z4,2026-02-17,14:00,15:00,Parent-Teacher Conference,School,,personal,none,
+evt_a5b6c7d8,2026-02-18,10:00,11:30,Quarterly Planning,Conference Room G,leadership,work,none,
+evt_e9f0g1h2,2026-02-19,09:00,10:00,Security Training,Training Room,all_staff,work,none,Mandatory session
+evt_i3j4k5l6,2026-02-19,15:30,16:30,Team Social,Local Bar,team,personal,none,Happy hour
+evt_dd043d94,2026-02-15,14:00,15:00,Q3 Roadmap Discussion,Remote,Jordan Kim; Alex Chen; Sam Rivera,work,none,
