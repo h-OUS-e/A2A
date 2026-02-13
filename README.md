@@ -3,6 +3,7 @@
 Agent-to-Agent communication system.
 
 ## Installation
+Create a Conda env and install requirements after activating conda env:
 
 ```bash
 pip install -r requirements.txt
