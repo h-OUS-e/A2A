@@ -1,10 +1,11 @@
 {
-  "enabledPlugins": {
-    "example-skills@anthropic-agent-skills": true
-  },
   "permissions": {
     "allow": [
       "WebFetch(domain:docs.langchain.com)"
     ]
+  },
+  "enabledPlugins": {
+    "example-skills@anthropic-agent-skills": true,
+    "svelte-skills@svelte-skills-kit": true
   }
 }

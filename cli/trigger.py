@@ -15,18 +15,19 @@ import httpx
 from a2a.client import ClientFactory
 from a2a.client.client import ClientConfig
 from a2a.types import Message, Part, TextPart, Role
-from a2a.utils.parts import get_text_parts
+from shared.utils.a2a_parts import get_metadata_parts, extract_text
 
 from config import KNOWN_AGENTS
 from shared.logging_config import setup_logging
 
+# for prettier printing inside console
+from rich.console import Console
+console = Console(markup=False)
+# from rich import print
+
 
 PERSON_A_URL = KNOWN_AGENTS["person_a"]
 
-
-def extract_text(parts: list[Part]) -> str:
-    """Extract text from a list of A2A Part objects."""
-    return "\n".join(get_text_parts(parts))
 
 
 async def send_request(message_text: str):
@@ -49,7 +50,7 @@ async def send_request(message_text: str):
         client = await ClientFactory.connect(
             agent=PERSON_A_URL,
             client_config=ClientConfig(
-                streaming=False,
+                streaming=True,
                 httpx_client=http_client
             ),
         )
@@ -74,7 +75,8 @@ async def send_request(message_text: str):
         ):
             event_duration = time.time() - send_start
             logger.debug(f"[{request_id}] Received event after {event_duration:.2f}s")
-
+            # print("EVENT", event)
+            
             # Extracting info from received event.
             # Event is either a Message or (Task, UpdateEvent)
             if isinstance(event, Message):
@@ -88,14 +90,32 @@ async def send_request(message_text: str):
                     print(f"Response (no text): {event}")
             
             elif isinstance(event, tuple):
-                task, _ = event
-                if task.history:
-                    last_msg = task.history[-1]
-                    text = extract_text(last_msg.parts)
+                task, update_event  = event
+                
+                # # Check if there's a status message (intermediate events)
+                if task.status and task.status.message:
+                    print("State Task: ", f"{task.status.state or "no state"}")
+                    print("State Update Event: ", f"{update_event.status.state or "no state"}")
+                    print("Update Event Message Id: ", f"{update_event.status.message.message_id or "no id"}")
+                    text = extract_text(update_event.status.message.parts)
+                    metadata = get_metadata_parts(update_event.status.message.parts)
+                    # console.print("TEST METADATA EXTRACTION: ", metadata)
+                    console.print("What is update event?", update_event)                    
+                    console.print("What is task?", task)
                     if text:
-                        total_duration = time.time() - send_start
-                        logger.info(f"[{request_id}] Received task history in {total_duration:.2f}s")
-                        print(f"Response:\n{text}")
+                        from_to = (metadata.get("from_to") if isinstance(metadata, dict) else getattr(metadata, "from_to", None))
+                        console.print(f"A2A Chat:\n{from_to}:    \n {text}\n\n")
+
+                        # print(f"INTERMEDIATE UPDATE EVENT TEXT:\n{text_update_event}")
+                    
+                # # No need to check history for the final response since we set final_response=True in base_agent.py
+                # if task.history:
+                #     for msg in task.history:
+                #         text = extract_text(msg.parts)
+                #         if text:
+                #             print(f"HISTORY:\n{text}")
+
+                         
                 elif task.artifacts:
                     for artifact in task.artifacts:
                         text = extract_text(artifact.parts)

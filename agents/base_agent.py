@@ -15,10 +15,15 @@ from langchain_core.tools import tool
 from a2a.server.agent_execution import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
 from a2a.server.events.event_queue import EventQueue
-from a2a.utils import new_agent_text_message
+from a2a.types import (
+    TaskState, TaskStatus, TaskStatusUpdateEvent, 
+    TextPart, Part, Message, Role
+)
 
 from config import OPENAI_API_KEY, OPENAI_MODEL
 from shared.calendar_store import CalendarStore
+from shared.utils.parser import parse_agent_messages
+
 
 
 # Logger will be initialized per-agent instance
@@ -157,7 +162,7 @@ class SchedulingAgent:
 
         return [check_availability, get_free_slots, get_schedule, book_meeting]
 
-    async def invoke(self, message: str, sender: str = "unknown") -> str:
+    async def invoke(self, message: str, sender: str = "unknown") -> dict:
         """Run the agent with a message and return the response text."""
         request_id = f"req_{int(time.time() * 1000)}"
         self.logger.info(f"[{request_id}] Received request from '{sender}'")
@@ -180,7 +185,7 @@ class SchedulingAgent:
             response = result["messages"][-1].content
             self.logger.info(f"[{request_id}] <<< {response[:150]}{'...' if len(response) > 150 else ''}")
 
-            return response
+            return result
 
         except AuthenticationError as e:
             self.logger.error(f"[{request_id}] Authentication failed: {e}")
@@ -214,13 +219,58 @@ class SchedulingAgentExecutor(AgentExecutor):
         try:
             # Langchain method to run agent
             agent_start = time.time()
-            response = await self.agent.invoke(user_input, sender=sender)
+            result = await self.agent.invoke(user_input, sender=sender)
             agent_duration = time.time() - agent_start
             self.logger.info(f"[{request_id}] Total execution: {agent_duration:.2f}s")
 
-            # A2A method to send response event
-            await event_queue.enqueue_event(new_agent_text_message(response))
-            self.logger.info(f"[{request_id}] === A2A execution completed ===")
+            # Parsing messages from langchain result
+            parsed = parse_agent_messages(result, agent_name=self.agent.agent_name)
+            
+            # Sending messages via A2A method
+            for item in parsed:
+                if item.type == "final_response":
+                    from_to_tag = f"[{item.from_agent} -> {item.to_agent}]"
+                    message_id_tag = f"final-{item.from_agent}-{item.to_agent}"
+                    # Final — use TaskStatusUpdateEvent with final=True (closes stream)
+                    status_event = TaskStatusUpdateEvent(
+                        taskId=context.task_id,
+                        contextId=context.context_id,
+                        status=TaskStatus(
+                            state=TaskState.completed,
+                            message=Message(
+                                role=Role.agent,
+                                parts=[Part(root=TextPart(
+                                    metadata={"from_to": from_to_tag},
+                                    text=f"{item.content}"))
+                                ],
+                                messageId=message_id_tag,
+                            ),
+                        ),
+                        final=True,  # This closes the stream
+                    )
+                    await event_queue.enqueue_event(status_event)
+                    
+                else:
+                    # Intermediate — use TaskStatusUpdateEvent (does NOT close stream)
+                    from_to_tag = f"[{item.from_agent} -> {item.to_agent}]"
+                    message_id_tag = f"intermediate-{item.from_agent}-{item.to_agent}"
+                    status_event = TaskStatusUpdateEvent(
+                        taskId=context.task_id,
+                        contextId=context.context_id,
+                        status=TaskStatus(
+                            state=TaskState.working,
+                            message=Message(
+                                role=Role.agent,
+                                parts=[Part(root=TextPart(
+                                    metadata={'from_to': from_to_tag}, 
+                                    text=f"{item.content}"))
+                                ],
+                                messageId=message_id_tag,
+                            ),
+                        ),
+                        final=False,  # NOT final — stream continues
+                    )
+                    await event_queue.enqueue_event(status_event)
 
         except Exception as e:
             self.logger.error(f"[{request_id}] Execution failed: {e}", exc_info=True)

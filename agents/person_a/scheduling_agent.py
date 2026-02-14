@@ -89,15 +89,18 @@ def build_orchestration_tools(registry: AgentRegistry) -> list:
                     logger.info(f"[{request_id}] Got response in {event_duration:.2f}s")
                     logger.info(f"[{request_id}] <<< {response[:150]}{'...' if len(response) > 150 else ''}")
                     return response
+                
                 elif isinstance(event, tuple):
-                    task, _ = event
+                    task, update_event = event
                     if task.history:
-                        last_msg = task.history[-1]
-                        texts = get_text_parts(last_msg.parts)
-                        response = "\n".join(texts) if texts else str(last_msg)
+                        # print("update_event", update_event)
+                        # print("task", task)
+                        response = get_text_parts(task.status.message.parts)
+                        # response = "\n".join(texts) if texts else str(last_msg)
                         logger.info(f"[{request_id}] Got task history in {event_duration:.2f}s")
                         logger.info(f"[{request_id}] <<< {response[:150]}{'...' if len(response) > 150 else ''}")
                         return response
+                    
                     if task.artifacts:
                         for artifact in task.artifacts:
                             texts = get_text_parts(artifact.parts)

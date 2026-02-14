@@ -12,7 +12,19 @@
       "Bash(findstr:*)",
       "Bash(conda run:*)",
       "WebFetch(domain:reference.langchain.com)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "mcp__plugin_episodic-memory_episodic-memory__search",
+      "Bash(python3:*)",
+      "Bash(git -C /c/Users/Ous/Documents/Github/SDIC/A2A log --oneline --all)",
+      "Bash(git -C /c/Users/Ous/Documents/Github/SDIC/A2A diff HEAD --name-only)",
+      "Bash(git -C /c/Users/Ous/Documents/Github/SDIC/A2A show HEAD:agents/base_agent.py)",
+      "Bash(git -C /c/Users/Ous/Documents/Github/SDIC/A2A diff agents/base_agent.py)",
+      "Bash(git -C /c/Users/Ous/Documents/Github/SDIC/A2A diff agents/person_a/scheduling_agent.py)",
+      "Bash(git -C /c/Users/Ous/Documents/Github/SDIC/A2A show HEAD:agents/person_a/scheduling_agent.py)"
     ]
+  },
+  "enabledPlugins": {
+    "episodic-memory@superpowers-marketplace": true,
+    "frontend-design@claude-plugins-official": true
   }
 }

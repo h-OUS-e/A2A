@@ -19,7 +19,7 @@ def build_agent_card(host: str = "localhost", port: int = 10001) -> AgentCard:
         defaultOutputModes=["text"],
         version="0.1.0",
         capabilities=AgentCapabilities(
-            streaming=False,
+            streaming=True,
             pushNotifications=False,
         ),
         skills=[
