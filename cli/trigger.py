@@ -100,8 +100,8 @@ async def send_request(message_text: str):
                     text = extract_text(update_event.status.message.parts)
                     metadata = get_metadata_parts(update_event.status.message.parts)
                     # console.print("TEST METADATA EXTRACTION: ", metadata)
-                    console.print("What is update event?", update_event)                    
-                    console.print("What is task?", task)
+                    # console.print("What is update event?", update_event)                    
+                    # console.print("What is task?", task)
                     if text:
                         from_to = (metadata.get("from_to") if isinstance(metadata, dict) else getattr(metadata, "from_to", None))
                         console.print(f"A2A Chat:\n{from_to}:    \n {text}\n\n")

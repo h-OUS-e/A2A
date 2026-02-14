@@ -226,7 +226,8 @@ class SchedulingAgentExecutor(AgentExecutor):
             # Parsing messages from langchain result
             parsed = parse_agent_messages(result, agent_name=self.agent.agent_name)
             
-            # Sending messages via A2A method
+            # Sending messages to frontend via A2A method
+            # To stream text from an LLM use TaskArtifactUpdateEvent
             for item in parsed:
                 if item.type == "final_response":
                     from_to_tag = f"[{item.from_agent} -> {item.to_agent}]"

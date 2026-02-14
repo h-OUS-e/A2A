@@ -20,7 +20,8 @@
       "Bash(git -C /c/Users/Ous/Documents/Github/SDIC/A2A show HEAD:agents/base_agent.py)",
       "Bash(git -C /c/Users/Ous/Documents/Github/SDIC/A2A diff agents/base_agent.py)",
       "Bash(git -C /c/Users/Ous/Documents/Github/SDIC/A2A diff agents/person_a/scheduling_agent.py)",
-      "Bash(git -C /c/Users/Ous/Documents/Github/SDIC/A2A show HEAD:agents/person_a/scheduling_agent.py)"
+      "Bash(git -C /c/Users/Ous/Documents/Github/SDIC/A2A show HEAD:agents/person_a/scheduling_agent.py)",
+      "Bash(find:*)"
     ]
   },
   "enabledPlugins": {
