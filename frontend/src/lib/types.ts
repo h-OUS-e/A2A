@@ -11,6 +11,7 @@ export interface ChatMessage {
 	from: string;
 	to: string;
 	timestamp: number;
+	channel_id?: string; // groups messages into the same A2A block if is an a2a interaction
 }
 
 export interface Channel {

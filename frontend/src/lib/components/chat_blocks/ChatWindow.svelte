@@ -21,40 +21,49 @@
      */
     const blocks = $derived.by((): Block[] => {
         const result: Block[] = [];
-        const channelMap = new Map<string, Channel>(); // Tracks known channels so we don't create duplicates
+        // Maps channel_id → a2a block, so messages can route back to previous blocks
+        const a2aBlockMap = new Map<string, Extract<Block, { kind: 'a2a' }>>();
+        // Maps channel_id:agent_pair → channel
+        const channelMap = new Map<string, Channel>();
 
         for (const msg of messages) {
             if (msg.type === 'inter_agent_request' || msg.type === 'inter_agent_response') {
                 if (!msg.from || !msg.to) continue;
 
-                // Canonical channel ID: sort participants so a--b === b--a
-                const id = [msg.from, msg.to].sort().join('--');
+                const agentPairId = [msg.from, msg.to].sort().join('--');
 
-                if (!channelMap.has(id)) {
+                // Use channel_id if present, otherwise fall back to positional grouping
+                const lastBlock = result[result.length - 1];
+                const blockKey = msg.channel_id
+                    ?? (lastBlock?.kind === 'a2a'
+                        ? [...a2aBlockMap.entries()].find(([, b]) => b === lastBlock)?.[0]
+                        : `pos-${result.length}`);
+
+                if (!a2aBlockMap.has(blockKey!)) {
+                    const newBlock = { kind: 'a2a' as const, channels: [] };
+                    a2aBlockMap.set(blockKey!, newBlock);
+                    result.push(newBlock);
+                }
+
+                const channelKey = `${blockKey}:${agentPairId}`;
+                if (!channelMap.has(channelKey)) {
                     const channel: Channel = {
-                        id,
+                        id: agentPairId,
                         participants: [msg.from, msg.to].sort() as [string, string],
                         messages: []
                     };
-                    channelMap.set(id, channel);
-
-                    // Append to existing a2a block if one is already at the end,
-                    // otherwise start a new a2a block
-                    const lastBlock = result[result.length - 1];
-                    if (lastBlock && lastBlock.kind === 'a2a') {
-                        lastBlock.channels.push(channel);
-                    } else {
-                        result.push({ kind: 'a2a', channels: [channel] });
-                    }
+                    channelMap.set(channelKey, channel);
+                    a2aBlockMap.get(blockKey!)!.channels.push(channel);
                 }
-                
-                channelMap.get(id)!.messages.push(msg);
+
+                channelMap.get(channelKey)!.messages.push(msg);
             } else {
                 result.push({ kind: 'message', msg });
             }
         }
         return result;
-    })
+    });
+
 
 </script>
 
