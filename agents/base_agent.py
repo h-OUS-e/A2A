@@ -22,8 +22,6 @@ from a2a.types import (
 
 from config import OPENAI_API_KEY, OPENAI_MODEL
 from shared.calendar_store import CalendarStore
-from shared.utils.parser import parse_agent_messages
-
 
 
 # Logger will be initialized per-agent instance
@@ -217,45 +215,31 @@ class SchedulingAgentExecutor(AgentExecutor):
         self.logger.info(f"[{request_id}] Sender: {sender}")
 
         try:
-            # Langchain method to run agent
+            # Stream events from LangChain as they happen, enqueuing each one
+            # immediately so the browser sees steps in real time.
             agent_start = time.time()
-            result = await self.agent.invoke(user_input, sender=sender)
-            agent_duration = time.time() - agent_start
-            self.logger.info(f"[{request_id}] Total execution: {agent_duration:.2f}s")
+            content = f"Sender: {sender}\n{user_input}"
+            pending_tool_calls: dict[str, str] = {}  # run_id -> agent_name
+            final_content: str | None = None
 
-            # Parsing messages from langchain result
-            parsed = parse_agent_messages(result, agent_name=self.agent.agent_name)
-            
-            # Sending messages to frontend via A2A method
-            # To stream text from an LLM use TaskArtifactUpdateEvent
-            for item in parsed:
-                if item.type == "final_response":
-                    from_to_tag = f"[{item.from_agent} -> {item.to_agent}]"
-                    message_id_tag = f"final-{item.from_agent}-{item.to_agent}"
-                    # Final — use TaskStatusUpdateEvent with final=True (closes stream)
-                    status_event = TaskStatusUpdateEvent(
-                        taskId=context.task_id,
-                        contextId=context.context_id,
-                        status=TaskStatus(
-                            state=TaskState.completed,
-                            message=Message(
-                                role=Role.agent,
-                                parts=[Part(root=TextPart(
-                                    metadata={"from_to": from_to_tag},
-                                    text=f"{item.content}"))
-                                ],
-                                messageId=message_id_tag,
-                            ),
-                        ),
-                        final=True,  # This closes the stream
-                    )
-                    await event_queue.enqueue_event(status_event)
-                    
-                else:
-                    # Intermediate — use TaskStatusUpdateEvent (does NOT close stream)
-                    from_to_tag = f"[{item.from_agent} -> {item.to_agent}]"
-                    message_id_tag = f"intermediate-{item.from_agent}-{item.to_agent}"
-                    status_event = TaskStatusUpdateEvent(
+            async for event in self.agent.agent.astream_events(
+                {"messages": [{"role": "user", "content": content}]},
+                config={"recursion_limit": 50}, #TODO: add to global config
+                version="v2",
+            ):
+                etype = event["event"]
+                name = event.get("name", "")
+
+                # Inter-agent REQUEST — fires before the tool body runs
+                if etype == "on_tool_start" and name == "send_message_to_agent":
+                    run_id = event["run_id"]
+                    tool_input = event["data"].get("input", {})
+                    to_agent = tool_input.get("agent_name", "unknown")
+                    message_text = tool_input.get("message", "")
+                    pending_tool_calls[run_id] = to_agent
+
+                    from_to_tag = f"[{self.agent.agent_name} -> {to_agent}]"
+                    await event_queue.enqueue_event(TaskStatusUpdateEvent(
                         taskId=context.task_id,
                         contextId=context.context_id,
                         status=TaskStatus(
@@ -263,15 +247,72 @@ class SchedulingAgentExecutor(AgentExecutor):
                             message=Message(
                                 role=Role.agent,
                                 parts=[Part(root=TextPart(
-                                    metadata={'from_to': from_to_tag}, 
-                                    text=f"{item.content}"))
-                                ],
-                                messageId=message_id_tag,
+                                    metadata={"from_to": from_to_tag},
+                                    text=message_text,
+                                ))],
+                                messageId=f"intermediate-{self.agent.agent_name}-{to_agent}",
                             ),
                         ),
-                        final=False,  # NOT final — stream continues
-                    )
-                    await event_queue.enqueue_event(status_event)
+                        final=False,
+                    ))
+
+                # Inter-agent RESPONSE — fires after the tool returns
+                elif etype == "on_tool_end" and name == "send_message_to_agent":
+                    run_id = event["run_id"]
+                    to_agent = pending_tool_calls.pop(run_id, "unknown")
+                    raw_output = event["data"].get("output", "")
+                    content = raw_output.content if hasattr(raw_output, "content") else raw_output
+                    if isinstance(content, list):
+                        response_text = "\n".join(str(item) for item in content)
+                    else:
+                        response_text = str(content)
+
+                    from_to_tag = f"[{to_agent} -> {self.agent.agent_name}]"
+                    await event_queue.enqueue_event(TaskStatusUpdateEvent(
+                        taskId=context.task_id,
+                        contextId=context.context_id,
+                        status=TaskStatus(
+                            state=TaskState.working,
+                            message=Message(
+                                role=Role.agent,
+                                parts=[Part(root=TextPart(
+                                    metadata={"from_to": from_to_tag},
+                                    text=response_text,
+                                ))],
+                                messageId=f"intermediate-{to_agent}-{self.agent.agent_name}",
+                            ),
+                        ),
+                        final=False,
+                    ))
+
+                # Final LLM turn — chat model ended with no further tool calls
+                elif etype == "on_chat_model_end":
+                    output = event["data"].get("output")
+                    if output and not getattr(output, "tool_calls", None):
+                        final_content = output.content
+
+            agent_duration = time.time() - agent_start
+            self.logger.info(f"[{request_id}] Total execution: {agent_duration:.2f}s")
+
+            # Emit the final response (closes the stream)
+            if final_content:
+                from_to_tag = f"[{self.agent.agent_name} -> user]"
+                await event_queue.enqueue_event(TaskStatusUpdateEvent(
+                    taskId=context.task_id,
+                    contextId=context.context_id,
+                    status=TaskStatus(
+                        state=TaskState.completed,
+                        message=Message(
+                            role=Role.agent,
+                            parts=[Part(root=TextPart(
+                                metadata={"from_to": from_to_tag},
+                                text=final_content,
+                            ))],
+                            messageId=f"final-{self.agent.agent_name}-user",
+                        ),
+                    ),
+                    final=True,
+                ))
 
         except Exception as e:
             self.logger.error(f"[{request_id}] Execution failed: {e}", exc_info=True)

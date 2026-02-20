@@ -40,6 +40,7 @@ def validate_openai_key(api_key: str) -> ChatOpenAI:
 def main():
     llm = validate_openai_key(os.getenv("OPENAI_API_KEY_SDIC"))
     print(llm)
+    
     processes = []
 
     for name, script in AGENTS:

@@ -17,20 +17,14 @@ The component uses a function to generate consistent colors for agents based on
 their names, ensuring that messages from the same agent have the same color 
 throughout the conversation.
 -->
+
+
+
 <script lang="ts">
 	import type { ChatMessage } from '$lib/types';
+	import { agentColor } from '$lib/utils_agent';
 
 	let { message }: { message: ChatMessage } = $props();
-
-	// Generate a consistent color from agent name (hash -> hue)
-	function agentColor(name: string): string {
-		let hash = 0;
-		for (let i = 0; i < name.length; i++) {
-			hash = name.charCodeAt(i) + ((hash << 5) - hash);
-		}
-		const hue = Math.abs(hash) % 360;
-		return `hsl(${hue}, 60%, 45%)`;
-	}
 
 	const isUser = message.type === 'user';
 	const isFinal = message.type === 'final_response';
@@ -47,8 +41,8 @@ throughout the conversation.
 	<div class="ml-4 border-l-2 pl-3" style="border-color: {agentColor(message.from)}">
 		<p class="mb-1 text-xs text-gray-400">
 			<span style="color: {agentColor(message.from)}">{message.from}</span>
-			<span class="mx-1">→</span>
-			<span style="color: {agentColor(message.to)}">{message.to}</span>
+			<!-- <span class="mx-1">→</span> -->
+			<!-- <span style="color: {agentColor(message.to)}">{message.to}</span> -->
 		</p>
 		<p class="whitespace-pre-wrap text-sm text-gray-200">{message.content}</p>
 	</div>

@@ -1,6 +1,6 @@
 <script lang="ts">
+	import ChatWindow from '$lib/components/chat_blocks/ChatWindow.svelte';
 	import ChatInput from '$lib/components/ChatInput.svelte';
-	import ChatMessageComponent from '$lib/components/ChatMessage.svelte';
 	import type { ChatMessage } from '$lib/types';
 
 	let messages = $state<ChatMessage[]>([]); // Reactive state for chat messages
@@ -92,17 +92,15 @@
 	</header>
 
 	<!-- Messages -->
-	<div bind:this={chatContainer} class="flex-1 space-y-4 overflow-y-auto px-6 py-4">
-		{#each messages as msg (msg.id)}
-			<ChatMessageComponent message={msg} />
-		{/each}
+	<div bind:this={chatContainer} class="flex-1 overflow-y-auto px-6 py-4">
+	<ChatWindow {messages} />
 
-		{#if loading}
-			<div class="flex items-center gap-2 text-sm text-gray-400">
-				<div class="h-2 w-2 animate-pulse rounded-full bg-indigo-400"></div>
-				Agents are negotiating...
-			</div>
-		{/if}
+	{#if loading}
+		<div class="flex items-center gap-2 text-sm text-gray-400">
+		<div class="h-2 w-2 animate-pulse rounded-full bg-indigo-400"></div>
+		Agents are negotiating...
+		</div>
+	{/if}
 	</div>
 
 	<!-- Input -->

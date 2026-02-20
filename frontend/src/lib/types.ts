@@ -13,6 +13,12 @@ export interface ChatMessage {
 	timestamp: number;
 }
 
+export interface Channel {
+	id: string;
+	participants: [string, string];
+	messages: ChatMessage[];
+}
+
 // export const AGENT_COLORS: Record<string, string> = {
 // 	person_a_scheduling_agent: '#3B82F6',
 // 	person_b: '#10B981',
